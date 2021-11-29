@@ -13,15 +13,16 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Jumping")]
     [Range(1, 10)] public float jumpVelocity;
-    private bool isGrounded;
-    public Transform groundCheck;
     [SerializeField] private float checkRadius;
     public LayerMask whatIsGround;
     private int extraJumps;
     public int extraJumpValue;
 
+    [Header("Collision")]
+    public Collider _charCollider;
+    public bool isGrounded = false;
+    public float touchGround = 1.1f;
 
-    //public Quaternion targetRotation = new Quaternion(0f, 180, 0, 0); // DOES NOT WORK!!
 
     private void Awake()
     {
@@ -36,13 +37,17 @@ public class PlayerMovement : MonoBehaviour
         {
             extraJumps = extraJumpValue;
         }
+        // does extra jump in mid air
         if (Input.GetKeyDown(KeyCode.Space) && extraJumps > 0)
         {
             _rb.velocity = Vector3.up * jumpVelocity;
             extraJumps--;
         }
-        else if (Input.GetKeyDown(KeyCode.Space) && extraJumps == 0 && isGrounded == true) {
-            _rb.velocity = Vector3.up * jumpVelocity;
+        // does jumping when on the ground
+        else if (Input.GetKeyDown(KeyCode.Space) && isGrounded == true)
+        {
+            //_rb.velocity = Vector3.up * jumpVelocity;
+            _rb.AddForce(Vector3.up * jumpVelocity, ForceMode.Impulse);
         }
 
         //Input recognition
@@ -57,21 +62,30 @@ public class PlayerMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
-        Collider[] something = Physics.OverlapSphere(groundCheck.position, checkRadius, whatIsGround);
-        if (something != null)
-        {
-            isGrounded = true;
-        }
-        else
-            isGrounded = false;
-
         //moves the player horizontally
         _rb.MovePosition(_rb.position + (direction * moveSpeed * Time.fixedDeltaTime));
+
+        // Ground Check logic
+        RaycastHit hit;
+        isGrounded = Physics.Raycast(_charCollider.bounds.center, transform.TransformDirection(Vector3.down), out hit, touchGround, whatIsGround);
     }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(_charCollider.bounds.center, _charCollider.bounds.center + Vector3.down * touchGround);
+    }
+
+    private void Flip()
+    {
+        isFacingRight = !isFacingRight;
+        transform.rotation = Quaternion.Euler(0, isFacingRight ? 0 : 180, 0);
+    }
+
+    // level restarts when player falls down //
 
     private void OnTriggerEnter(Collider other)
     {
-        //level restarts when player falls down
         if (other.tag == "LevelBoundary")
         {
             RestartLevel();
@@ -90,14 +104,4 @@ public class PlayerMovement : MonoBehaviour
         Debug.Log(arg0.name);
         Debug.Log(arg1);
     }
-
-    private void Flip()
-    {
-        isFacingRight = !isFacingRight;
-        transform.rotation = Quaternion.Euler(0, isFacingRight ? 0 : 180, 0);
-        //float speed = 100f;        // DOES NOT WORK!!!
-        //transform.rotation = Quaternion.Lerp(transform.rotation, target.normalized, Time.deltaTime * speed);
-    }
-
-
 }
